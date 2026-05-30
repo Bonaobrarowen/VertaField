@@ -185,6 +185,10 @@
       border-color: var(--green-400);
       box-shadow: 0 0 0 2px rgba(99,153,34,0.18);
     }
+    input.route-auto { background: var(--bg-secondary); }
+    input.route-auto[readonly] { color: var(--text-primary); cursor: default; }
+    .route-hint { font-size: 12px; color: var(--text-secondary); margin-top: 6px; line-height: 1.35; }
+    .route-hint a { color: var(--green-600); text-decoration: none; font-weight: 500; }
     textarea { resize: none; }
 
     /* ── Buttons ── */
@@ -423,13 +427,18 @@
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
             <div class="form-group" style="margin-bottom:0">
               <label class="form-label">Distance (km)</label>
-              <input type="number" id="distance" placeholder="0.0" min="0" step="0.1" />
+              <input type="number" id="distance" class="route-auto" placeholder="Auto" min="0" step="0.1" readonly />
             </div>
             <div class="form-group" style="margin-bottom:0">
               <label class="form-label">Travel time (hrs)</label>
-              <input type="number" id="travelTime" placeholder="0.0" min="0" step="0.5" />
+              <input type="number" id="travelTime" class="route-auto" placeholder="Auto" min="0" step="0.1" readonly />
             </div>
           </div>
+          <p class="route-hint" id="routeCalcStatus">Enter origin and destination — distance and hours fill in automatically.</p>
+          <button type="button" class="btn-outline" id="recalcRouteBtn" style="width:100%;margin-top:4px" onclick="calculateRouteFromPlaces()">
+            <i class="ti ti-route"></i> Recalculate route
+          </button>
+          <p class="route-hint"><a href="#" id="editRouteManual">Enter distance & time manually</a></p>
         </div>
         <div class="card">
           <div class="card-title"><i class="ti ti-user"></i> Handler role</div>
@@ -678,6 +687,130 @@ function showScreen(id) {
 
 function goBack() { showScreen(prevScreen); }
 
+// ── Route auto-calc (origin → destination) ───────────────────────────────────
+const geocodeCache = {};
+let routeCalcDebounce = null;
+let manualRouteMode = false;
+
+function setRouteStatus(msg) {
+  const el = document.getElementById('routeCalcStatus');
+  if (el) el.textContent = msg;
+}
+
+function setRouteFieldsReadonly(readonly) {
+  const dist = document.getElementById('distance');
+  const time = document.getElementById('travelTime');
+  const lock = readonly && !manualRouteMode;
+  if (dist) dist.readOnly = lock;
+  if (time) time.readOnly = lock;
+}
+
+function haversineKm(from, to) {
+  const R = 6371;
+  const dLat = (to.lat - from.lat) * Math.PI / 180;
+  const dLon = (to.lon - from.lon) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2
+    + Math.cos(from.lat * Math.PI / 180) * Math.cos(to.lat * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+async function geocodePlace(name) {
+  const key = name.trim().toLowerCase();
+  if (geocodeCache[key]) return geocodeCache[key];
+  const q = encodeURIComponent(name.includes('Philippines') ? name : name + ', Philippines');
+  const res = await fetch(`https://photon.komoot.io/api/?q=${q}&limit=1&lang=en`);
+  const data = await res.json();
+  if (!data.features?.length) return null;
+  const [lon, lat] = data.features[0].geometry.coordinates;
+  const pt = { lat, lon };
+  geocodeCache[key] = pt;
+  return pt;
+}
+
+function enableManualRouteEntry() {
+  manualRouteMode = true;
+  setRouteFieldsReadonly(false);
+  setRouteStatus('Enter distance and travel time manually below.');
+}
+
+async function calculateRouteFromPlaces() {
+  const origin = document.getElementById('origin').value.trim();
+  const dest = document.getElementById('destination').value.trim();
+  if (!origin || !dest) {
+    setRouteStatus('Enter origin and destination first.');
+    return false;
+  }
+  if (manualRouteMode) return !!(document.getElementById('distance').value && document.getElementById('travelTime').value);
+
+  const btn = document.getElementById('recalcRouteBtn');
+  if (btn) btn.disabled = true;
+  setRouteStatus('Looking up places and driving route…');
+
+  try {
+    const [from, to] = await Promise.all([geocodePlace(origin), geocodePlace(dest)]);
+    if (!from || !to) {
+      toast('Could not find one or both places. Try a city or market name.');
+      enableManualRouteEntry();
+      return false;
+    }
+
+    const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${from.lon},${from.lat};${to.lon},${to.lat}?overview=false`;
+    const routeRes = await fetch(osrmUrl);
+    const routeData = await routeRes.json();
+
+    let km, hrs, viaRoad = false;
+    if (routeData.code === 'Ok' && routeData.routes?.[0]) {
+      km = routeData.routes[0].distance / 1000;
+      hrs = routeData.routes[0].duration / 3600;
+      viaRoad = true;
+    } else {
+      km = haversineKm(from, to);
+      hrs = km / 35;
+      setRouteStatus('Straight-line estimate (road route unavailable).');
+    }
+
+    document.getElementById('distance').value = km.toFixed(1);
+    document.getElementById('travelTime').value = Math.max(0.1, hrs).toFixed(1);
+    if (viaRoad) {
+      setRouteStatus(`By road: ${km.toFixed(1)} km, about ${hrs.toFixed(1)} hour${hrs >= 1.5 ? 's' : ''}`);
+    }
+    setRouteFieldsReadonly(true);
+    return true;
+  } catch (e) {
+    toast('Route lookup failed. Check your connection or enter manually.');
+    enableManualRouteEntry();
+    return false;
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+function scheduleRouteCalc() {
+  if (manualRouteMode) return;
+  clearTimeout(routeCalcDebounce);
+  routeCalcDebounce = setTimeout(() => {
+    const o = document.getElementById('origin').value.trim();
+    const d = document.getElementById('destination').value.trim();
+    if (o.length >= 3 && d.length >= 3) calculateRouteFromPlaces();
+  }, 900);
+}
+
+function initRouteAutoCalc() {
+  ['origin', 'destination'].forEach(id => {
+    document.getElementById(id)?.addEventListener('input', () => {
+      manualRouteMode = false;
+      document.getElementById('distance').value = '';
+      document.getElementById('travelTime').value = '';
+      setRouteFieldsReadonly(true);
+      scheduleRouteCalc();
+    });
+  });
+  document.getElementById('editRouteManual')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    enableManualRouteEntry();
+  });
+}
+
 // ── Form logic ───────────────────────────────────────────────────────────────
 function resetForm() {
   ['origin','destination','distance','travelTime','notes','productWeight']
@@ -687,17 +820,26 @@ function resetForm() {
   freshRating = 0;
   updateStars(0);
   document.getElementById('freshLabel').textContent = 'Tap to rate';
+  manualRouteMode = false;
+  setRouteFieldsReadonly(true);
+  setRouteStatus('Enter origin and destination — distance and hours fill in automatically.');
   goStep(1, true);
 }
 
-function goStep(n, silent) {
+async function goStep(n, silent) {
   if (!silent) {
     if (n === 2) {
       const o = document.getElementById('origin').value.trim();
       const d = document.getElementById('destination').value.trim();
-      const dist = document.getElementById('distance').value;
+      let dist = document.getElementById('distance').value;
       const role = document.getElementById('userRole').value;
-      if (!o || !d || !dist || !role) { toast('Please fill in all transport fields'); return; }
+      if (!o || !d || !role) { toast('Please fill in origin, destination, and role'); return; }
+      if (!dist) {
+        const ok = await calculateRouteFromPlaces();
+        if (!ok) return;
+        dist = document.getElementById('distance').value;
+      }
+      if (!dist) { toast('Please wait for route calculation or enter distance manually'); return; }
     }
     if (n === 3) {
       const pt = document.getElementById('productType').value;
@@ -1008,6 +1150,7 @@ setInterval(updateClock, 10000);
 updateClock();
 
 // ── Init ──────────────────────────────────────────────────────────────────────
+initRouteAutoCalc();
 loadData();
 showScreen('dash');
 </script>
