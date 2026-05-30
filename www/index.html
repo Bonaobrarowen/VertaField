@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#27500A" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="VertaField" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="format-detection" content="telephone=no" />
+  <title>VertaField</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="icons/icon.svg" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css" />
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    :root {
+      --green-50: #EAF3DE; --green-100: #C0DD97; --green-200: #97C459;
+      --green-400: #639922; --green-600: #3B6D11; --green-800: #27500A; --green-900: #173404;
+      --teal-50: #E1F5EE; --teal-100: #9FE1CB; --teal-200: #5DCAA5;
+      --teal-400: #1D9E75; --teal-600: #0F6E56; --teal-800: #085041;
+      --amber-50: #FAEEDA; --amber-100: #FAC775; --amber-200: #EF9F27;
+      --amber-400: #BA7517; --amber-600: #854F0B; --amber-800: #633806;
+      --coral-50: #FAECE7; --coral-400: #D85A30; --coral-800: #712B13;
+      --gray-50: #F1EFE8; --gray-100: #D3D1C7; --gray-200: #B4B2A9;
+      --gray-400: #888780; --gray-600: #5F5E5A; --gray-800: #444441;
+      --blue-50: #E6F1FB; --blue-400: #378ADD; --blue-800: #0C447C;
+      --red-50: #FCEBEB; --red-100: #F7C1C1; --red-400: #E24B4A; --red-800: #791F1F;
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+      --bg-primary: #ffffff;
+      --bg-secondary: #f5f5f3;
+      --bg-tertiary: #eeece6;
+      --text-primary: #1a1a18;
+      --text-secondary: #5f5e5a;
+      --border: rgba(0,0,0,0.12);
+      --border-strong: rgba(0,0,0,0.25);
+      --radius-md: 8px;
+      --radius-lg: 12px;
+      --radius-xl: 16px;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg-primary: #1c1c1a;
+        --bg-secondary: #252523;
+        --bg-tertiary: #111110;
+        --text-primary: #f0ede6;
+        --text-secondary: #a8a5a0;
+        --border: rgba(255,255,255,0.10);
+        --border-strong: rgba(255,255,255,0.20);
+      }
+    }
+    html, body {
+      height: 100%; width: 100%;
+      background: var(--bg-tertiary);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      color: var(--text-primary);
+      overflow: hidden;
+      overscroll-behavior: none;
+      touch-action: manipulation;
+    }
+    #app {
+      max-width: 430px;
+      margin: 0 auto;
+      height: 100vh;
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      background: var(--bg-secondary);
+      position: relative;
+      overflow: hidden;
+      padding-bottom: var(--safe-bottom);
+    }
+    @media (min-width: 431px) {
+      #app { box-shadow: 0 0 40px rgba(0,0,0,0.12); }
+    }
+    .status-bar {
+      background: var(--green-800);
+      color: #fff;
+      font-size: 11px;
+      padding: calc(6px + var(--safe-top)) 16px 4px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-shrink: 0;
+    }
+    .native-app .status-bar { display: none !important; }
+    .native-app .top-nav { padding-top: calc(10px + var(--safe-top)); }
+    .top-nav {
+      background: var(--green-800);
+      color: #fff;
+      padding: 10px 16px 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+    .back-btn {
+      background: none; border: none; color: #fff;
+      font-size: 22px; cursor: pointer; padding: 4px;
+      line-height: 1; display: none; min-width: 44px; min-height: 44px;
+    }
+    .nav-logo {
+      width: 28px; height: 28px;
+      background: var(--green-200);
+      border-radius: 6px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; font-weight: 700; color: var(--green-900);
+    }
+    #navTitle { font-size: 17px; font-weight: 500; flex: 1; }
+    .screen { display: none; flex-direction: column; flex: 1; overflow: hidden; }
+    .screen.active { display: flex; }
+    .content {
+      flex: 1; overflow-y: auto;
+      padding: 16px;
+      display: flex; flex-direction: column; gap: 12px;
+      -webkit-overflow-scrolling: touch;
+    }
+    .bottom-nav {
+      background: var(--bg-primary);
+      border-top: 0.5px solid var(--border);
+      display: flex;
+      padding: 6px 0 calc(10px + var(--safe-bottom));
+      flex-shrink: 0;
+    }
+    .nav-item {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; gap: 2px;
+      cursor: pointer; padding: 8px 0;
+      border: none; background: none;
+      color: var(--text-secondary); font-size: 11px;
+      transition: color 0.15s;
+      min-height: 48px;
+    }
+    .nav-item.active { color: var(--green-600); }
+    .nav-item i { font-size: 22px; }
+    .card {
+      background: var(--bg-primary);
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 14px 16px;
+    }
+    .card-title {
+      font-size: 13px; color: var(--text-secondary);
+      margin-bottom: 10px; font-weight: 500;
+    }
+    .metric-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .metric-card {
+      background: var(--bg-secondary);
+      border-radius: var(--radius-md);
+      padding: 12px;
+      display: flex; flex-direction: column; gap: 4px;
+    }
+    .metric-label { font-size: 12px; color: var(--text-secondary); }
+    .metric-value { font-size: 22px; font-weight: 500; color: var(--text-primary); }
+    .badge {
+      display: inline-block; font-size: 11px; font-weight: 500;
+      padding: 3px 8px; border-radius: 20px;
+    }
+    .badge-green  { background: var(--green-50);  color: var(--green-800); }
+    .badge-amber  { background: var(--amber-50);  color: var(--amber-800); }
+    .badge-red    { background: var(--red-50);    color: var(--red-800); }
+    .badge-teal   { background: var(--teal-50);   color: var(--teal-800); }
+    .form-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+    .form-label { font-size: 13px; color: var(--text-secondary); font-weight: 500; }
+    input[type=text], input[type=number], select, textarea {
+      width: 100%; padding: 12px;
+      font-size: 16px;
+      border: 0.5px solid var(--border-strong);
+      border-radius: var(--radius-md);
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      outline: none;
+      -webkit-appearance: none;
+    }
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--green-400);
+      box-shadow: 0 0 0 2px rgba(99,153,34,0.18);
+    }
+    textarea { resize: none; }
+    .btn-primary {
+      width: 100%; padding: 14px;
+      background: var(--green-600); color: #fff;
+      border: none; border-radius: var(--radius-md);
+      font-size: 15px; font-weight: 500;
+      cursor: pointer; transition: opacity 0.15s;
+      min-height: 48px;
+    }
+    .btn-primary:active { opacity: 0.85; transform: scale(0.99); }
+    .btn-outline {
+      padding: 10px 14px;
+      background: none;
+      border: 0.5px solid var(--border-strong);
+      border-radius: var(--radius-md);
+      font-size: 13px; cursor: pointer;
+      color: var(--text-primary);
+      min-height: 44px;
+    }
+    .btn-danger {
+      width: 100%; padding: 14px;
+      background: var(--red-50);
+      border: 0.5px solid var(--red-400);
+      border-radius: var(--radius-md);
+      font-size: 14px; cursor: pointer;
+      color: var(--red-800); font-weight: 500;
+      min-height: 48px;
+    }
+    .step-bars { display: flex; gap: 8px; margin-bottom: 4px; }
+    .step-bar { flex: 1; height: 4px; background: var(--bg-secondary); border-radius: 2px; transition: background 0.3s; }
+    .step-bar.done { background: var(--green-400); }
+    .star-row { display: flex; gap: 8px; }
+    .star { font-size: 36px; cursor: pointer; color: var(--gray-200); transition: color 0.1s; user-select: none; padding: 4px; }
+    .star.filled { color: var(--amber-200); }
+    .log-item {
+      display: flex; align-items: center; gap: 12px;
+      padding: 12px 0;
+      border-bottom: 0.5px solid var(--border);
+      cursor: pointer;
+    }
+    .log-item:last-child { border-bottom: none; padding-bottom: 0; }
+    .log-icon {
+      width: 38px; height: 38px; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; font-size: 18px;
+    }
+    .log-icon.green { background: var(--green-50); color: var(--green-600); }
+    .log-icon.amber { background: var(--amber-50); color: var(--amber-600); }
+    .log-icon.red   { background: var(--red-50);   color: var(--red-400); }
+    .log-details { flex: 1; min-width: 0; }
+    .log-route { font-size: 14px; font-weight: 500; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .log-meta  { font-size: 12px; color: var(--text-secondary); margin-top: 1px; }
+    .log-right { text-align: right; flex-shrink: 0; }
+    .log-dist  { font-size: 13px; font-weight: 500; color: var(--text-primary); }
+    .log-date  { font-size: 11px; color: var(--text-secondary); }
+    .chart-wrap { display: flex; align-items: flex-end; gap: 6px; height: 80px; }
+    .bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+    .bar { width: 100%; border-radius: 4px 4px 0 0; transition: height 0.3s; }
+    .bar-label { font-size: 10px; color: var(--text-secondary); }
+    .progress-track { background: var(--bg-secondary); border-radius: 4px; height: 8px; overflow: hidden; }
+    .progress-fill  { height: 100%; border-radius: 4px; transition: width 0.4s; }
+    .section-hdr { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+    .section-hdr h3 { font-size: 15px; font-weight: 500; color: var(--text-primary); }
+    .seg-ctrl { display: flex; background: var(--bg-secondary); border-radius: var(--radius-md); padding: 3px; gap: 2px; }
+    .seg-btn { flex: 1; padding: 8px 6px; font-size: 12px; border: none; background: none; border-radius: 6px; cursor: pointer; color: var(--text-secondary); font-weight: 500; min-height: 36px; }
+    .seg-btn.active { background: var(--bg-primary); color: var(--green-600); box-shadow: 0 1px 2px rgba(0,0,0,0.08); }
+    .detail-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 0.5px solid var(--border); }
+    .detail-row:last-child { border-bottom: none; }
+    .detail-key { font-size: 13px; color: var(--text-secondary); }
+    .detail-val { font-size: 14px; font-weight: 500; color: var(--text-primary); text-align: right; }
+    .quality-orb { width: 64px; height: 64px; border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 14px; font-weight: 600; line-height: 1.2; }
+    #toast {
+      position: fixed; bottom: calc(80px + var(--safe-bottom)); left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: var(--green-800); color: #fff;
+      padding: 10px 20px; border-radius: 20px;
+      font-size: 13px; opacity: 0; pointer-events: none;
+      transition: all 0.25s; z-index: 999;
+      white-space: nowrap;
+    }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    .empty { text-align: center; padding: 28px 16px; color: var(--text-secondary); font-size: 13px; }
+    #installBanner {
+      display: none;
+      background: var(--green-800);
+      color: #fff;
+      padding: 10px 14px;
+      font-size: 13px;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+    #installBanner.show { display: flex; }
+    #installBanner button {
+      background: var(--green-200);
+      color: var(--green-900);
+      border: none;
+      border-radius: 6px;
+      padding: 6px 12px;
+      font-weight: 600;
+      font-size: 12px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+<div id="toast"></div>
+
+<div id="app">
+
+  <div id="installBanner">
+    <span>Install VertaField on your home screen</span>
+    <button type="button" id="installBtn">Install</button>
+  </div>
+
+  <div class="status-bar">
+    <span id="clockDisplay">9:41</span>
+    <span>●●●● WiFi 🔋</span>
+  </div>
+
+  <div class="top-nav">
+    <button class="back-btn" id="backBtn" onclick="goBack()" aria-label="Go back">
+      <i class="ti ti-arrow-left"></i>
+    </button>
+    <div class="nav-logo">V</div>
+    <span id="navTitle">VertaField</span>
+  </div>
+
+  <div class="screen active" id="screen-dash">
+    <div class="content">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <div style="font-size:13px;color:var(--text-secondary)">Good morning,</div>
+          <div style="font-size:18px;font-weight:500">Farmer Juan 👋</div>
+        </div>
+        <div style="width:40px;height:40px;background:var(--green-50);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:600;color:var(--green-800)">JR</div>
+      </div>
+      <div class="metric-grid">
+        <div class="metric-card">
+          <span class="metric-label"><i class="ti ti-package"></i> Shipments</span>
+          <span class="metric-value" id="m-total">0</span>
+          <span class="badge badge-teal" id="m-today">+0 today</span>
+        </div>
+        <div class="metric-card">
+          <span class="metric-label"><i class="ti ti-route"></i> Avg Distance</span>
+          <span class="metric-value" id="m-dist">—</span>
+          <span style="font-size:11px;color:var(--text-secondary)">km avg</span>
+        </div>
+        <div class="metric-card">
+          <span class="metric-label"><i class="ti ti-star"></i> Avg Quality</span>
+          <span class="metric-value" id="m-quality">—</span>
+          <span style="font-size:11px;color:var(--text-secondary)">out of 5</span>
+        </div>
+        <div class="metric-card">
+          <span class="metric-label"><i class="ti ti-alert-circle"></i> Spoilage</span>
+          <span class="metric-value" id="m-spoilage">0%</span>
+          <span class="badge badge-amber" id="m-spoilage-badge">low risk</span>
+        </div>
+      </div>
+      <div class="card">
+        <div class="section-hdr">
+          <h3>Quality vs Distance</h3>
+          <div class="seg-ctrl">
+            <button class="seg-btn active" onclick="switchChart('week',this)">Week</button>
+            <button class="seg-btn" onclick="switchChart('month',this)">Month</button>
+          </div>
+        </div>
+        <div class="chart-wrap" id="chartBars"></div>
+        <div style="display:flex;gap:12px;margin-top:8px">
+          <div style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text-secondary)">
+            <div style="width:10px;height:10px;background:var(--green-400);border-radius:2px"></div> Quality score
+          </div>
+          <div style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text-secondary)">
+            <div style="width:10px;height:10px;background:var(--amber-200);border-radius:2px"></div> Distance (×0.1 km)
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="section-hdr">
+          <h3>Recent Transports</h3>
+          <button class="btn-outline" onclick="showScreen('logs')">View all</button>
+        </div>
+        <div id="dashRecent"><div class="empty">No records yet. Log your first transport!</div></div>
+      </div>
+      <div class="card" style="background:var(--green-50);border-color:var(--green-100)">
+        <div style="display:flex;align-items:center;gap:10px">
+          <i class="ti ti-bulb" style="font-size:22px;color:var(--green-600)"></i>
+          <div>
+            <div style="font-size:13px;font-weight:500;color:var(--green-800)" id="insightText">Log transports to get quality insights.</div>
+            <div style="font-size:11px;color:var(--green-600);margin-top:2px">VertaField Insight</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="screen" id="screen-log">
+    <div class="content">
+      <div class="step-bars">
+        <div class="step-bar done" id="sbar1"></div>
+        <div class="step-bar" id="sbar2"></div>
+        <div class="step-bar" id="sbar3"></div>
+      </div>
+      <div style="font-size:12px;color:var(--text-secondary)" id="stepLabel">Step 1 of 3 — Transport info</div>
+      <div id="step1">
+        <div class="card">
+          <div class="card-title"><i class="ti ti-map-pin"></i> Route details</div>
+          <div class="form-group">
+            <label class="form-label" for="origin">Origin</label>
+            <input type="text" id="origin" placeholder="e.g. Marikina Farm" autocomplete="off" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="destination">Destination</label>
+            <input type="text" id="destination" placeholder="e.g. Divisoria Market" autocomplete="off" />
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div class="form-group" style="margin-bottom:0">
+              <label class="form-label" for="distance">Distance (km)</label>
+              <input type="number" id="distance" placeholder="0.0" min="0" step="0.1" inputmode="decimal" />
+            </div>
+            <div class="form-group" style="margin-bottom:0">
+              <label class="form-label" for="travelTime">Travel time (hrs)</label>
+              <input type="number" id="travelTime" placeholder="0.0" min="0" step="0.5" inputmode="decimal" />
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title"><i class="ti ti-user"></i> Handler role</div>
+          <select id="userRole">
+            <option value="">Select role...</option>
+            <option>Farmer</option>
+            <option>Distributor</option>
+            <option>Vendor</option>
+          </select>
+        </div>
+        <button class="btn-primary" onclick="goStep(2)">Continue <i class="ti ti-arrow-right"></i></button>
+      </div>
+      <div id="step2" style="display:none">
+        <div class="card">
+          <div class="card-title"><i class="ti ti-leaf"></i> Product details</div>
+          <div class="form-group">
+            <label class="form-label" for="productType">Product type</label>
+            <select id="productType">
+              <option value="">Select product...</option>
+              <option>Vegetables</option>
+              <option>Fruits</option>
+              <option>Root crops</option>
+              <option>Herbs</option>
+              <option>Grains</option>
+              <option>Other</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="productWeight">Weight / volume (kg)</label>
+            <input type="number" id="productWeight" placeholder="0" min="0" inputmode="numeric" />
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title"><i class="ti ti-star"></i> Freshness on arrival</div>
+          <div class="star-row" id="freshStars">
+            <span class="star" onclick="setRating(1)" role="button" aria-label="1 star">★</span>
+            <span class="star" onclick="setRating(2)" role="button" aria-label="2 stars">★</span>
+            <span class="star" onclick="setRating(3)" role="button" aria-label="3 stars">★</span>
+            <span class="star" onclick="setRating(4)" role="button" aria-label="4 stars">★</span>
+            <span class="star" onclick="setRating(5)" role="button" aria-label="5 stars">★</span>
+          </div>
+          <div style="font-size:12px;color:var(--text-secondary);margin-top:8px" id="freshLabel">Tap to rate</div>
+        </div>
+        <div class="card">
+          <div class="card-title"><i class="ti ti-alert-triangle"></i> Damage level</div>
+          <select id="damageLevel">
+            <option value="">Select damage level...</option>
+            <option value="1">None — perfect condition</option>
+            <option value="2">Minor — slight bruising</option>
+            <option value="3">Moderate — visible damage</option>
+            <option value="4">Severe — significant loss</option>
+          </select>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn-outline" style="flex:1" onclick="goStep(1)"><i class="ti ti-arrow-left"></i> Back</button>
+          <button class="btn-primary" style="flex:2" onclick="goStep(3)">Continue <i class="ti ti-arrow-right"></i></button>
+        </div>
+      </div>
+      <div id="step3" style="display:none">
+        <div class="card">
+          <div class="card-title"><i class="ti ti-thermometer"></i> Transport conditions</div>
+          <div class="form-group">
+            <label class="form-label" for="tempCondition">Temperature condition</label>
+            <select id="tempCondition">
+              <option value="">Select...</option>
+              <option>Cold (refrigerated)</option>
+              <option>Ambient (room temp)</option>
+              <option>Hot / exposed to sun</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="handling">Handling quality</label>
+            <select id="handling">
+              <option value="">Select...</option>
+              <option>Careful</option>
+              <option>Normal</option>
+              <option>Rough</option>
+            </select>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title"><i class="ti ti-notes"></i> Notes (optional)</div>
+          <textarea id="notes" rows="3" placeholder="Any additional observations..."></textarea>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn-outline" style="flex:1" onclick="goStep(2)"><i class="ti ti-arrow-left"></i> Back</button>
+          <button class="btn-primary" style="flex:2" onclick="submitLog()"><i class="ti ti-check"></i> Save record</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="screen" id="screen-logs">
+    <div class="content">
+      <input type="text" id="searchInput" placeholder="Search by route or product..." oninput="renderLogs()" autocomplete="off" />
+      <div class="seg-ctrl" id="filterSeg">
+        <button class="seg-btn active" onclick="setFilter('all',this)">All</button>
+        <button class="seg-btn" onclick="setFilter('good',this)">Good</button>
+        <button class="seg-btn" onclick="setFilter('medium',this)">Medium</button>
+        <button class="seg-btn" onclick="setFilter('poor',this)">Poor</button>
+      </div>
+      <div class="card" id="logsList">
+        <div class="empty">No transport records yet.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="screen" id="screen-detail">
+    <div class="content">
+      <div class="card" id="detailHeader" style="text-align:center;padding:20px"></div>
+      <div class="card" id="detailBody"></div>
+      <div class="card" id="detailQuality"></div>
+      <button class="btn-danger" id="detailDeleteBtn">
+        <i class="ti ti-trash"></i> Delete record
+      </button>
+    </div>
+  </div>
+
+  <div class="screen" id="screen-analytics">
+    <div class="content">
+      <div class="card">
+        <div class="card-title">Distance vs Quality (scatter)</div>
+        <canvas id="scatterCanvas" width="340" height="160" style="width:100%"></canvas>
+        <div style="font-size:11px;color:var(--text-secondary);margin-top:6px;text-align:center" id="corrLabel">Log more data to see correlation</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Quality breakdown</div>
+        <div id="qualityBreakdown"><div class="empty">No data yet.</div></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Top products by volume</div>
+        <div id="productVolumes"><div class="empty">No data yet.</div></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Route summary</div>
+        <div id="routeSummary"><div class="empty">No data yet.</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="bottom-nav" id="bottomNav">
+    <button class="nav-item active" id="nav-dash" onclick="showScreen('dash')">
+      <i class="ti ti-home"></i><span>Home</span>
+    </button>
+    <button class="nav-item" id="nav-log" onclick="showScreen('log')">
+      <i class="ti ti-plus-circle"></i><span>Log</span>
+    </button>
+    <button class="nav-item" id="nav-logs" onclick="showScreen('logs')">
+      <i class="ti ti-clipboard-list"></i><span>Records</span>
+    </button>
+    <button class="nav-item" id="nav-analytics" onclick="showScreen('analytics')">
+      <i class="ti ti-chart-bar"></i><span>Analytics</span>
+    </button>
+  </div>
+
+</div>
+
+<script src="js/app.js"></script>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  });
+}
+(function initNative() {
+  const cap = window.Capacitor;
+  if (cap && cap.isNativePlatform && cap.isNativePlatform()) {
+    document.documentElement.classList.add('native-app');
+  }
+})();
+let deferredInstallPrompt = null;
+const installBanner = document.getElementById('installBanner');
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  if (installBanner && !window.matchMedia('(display-mode: standalone)').matches) {
+    installBanner.classList.add('show');
+  }
+});
+document.getElementById('installBtn')?.addEventListener('click', async () => {
+  if (!deferredInstallPrompt) return;
+  deferredInstallPrompt.prompt();
+  await deferredInstallPrompt.userChoice;
+  deferredInstallPrompt = null;
+  installBanner?.classList.remove('show');
+});
+</script>
+</body>
+</html>
