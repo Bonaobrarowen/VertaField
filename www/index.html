@@ -332,6 +332,17 @@
         <div style="width:40px;height:40px;background:var(--green-50);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:600;color:var(--green-800)">JR</div>
       </div>
 
+      <div class="card" style="background:var(--teal-50);border-color:var(--teal-100)">
+        <div class="card-title"><i class="ti ti-cloud"></i> Shared records (all phones)</div>
+        <p class="route-hint">Everyone on your team uses the <strong>same team code</strong> to see the same transports in real time.</p>
+        <div class="form-group" style="margin-bottom:8px">
+          <label class="form-label" for="syncCodeInput">Team code</label>
+          <input type="text" id="syncCodeInput" placeholder="e.g. vertafield" autocomplete="off" />
+        </div>
+        <button type="button" class="btn-outline" style="width:100%" onclick="applyTeamSyncCode()">Save team code</button>
+        <p class="route-hint" id="syncStatus" style="margin-top:8px">Connecting…</p>
+      </div>
+
       <!-- Metrics -->
       <div class="metric-grid">
         <div class="metric-card">
@@ -611,23 +622,43 @@
 
 </div><!-- #app -->
 
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<script src="js/firebase-config.js"></script>
+<script src="js/sync.js"></script>
 <script>
-// ── Data store ──────────────────────────────────────────────────────────────
+// ── Data store (local + optional cloud sync) ────────────────────────────────
 const STORAGE_KEY = 'vf_records_v1';
 let records = [];
 
-function loadData() {
-  try { records = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); } catch(e) { records = []; }
-  if (records.length === 0) {
-    records = [
-      { id:'s1', origin:'Quezon City Farm',  destination:'Quiapo Market',  distance:12, travelTime:1.5, userRole:'Farmer',      productType:'Vegetables', productWeight:50,  freshness:4, damageLevel:1, tempCondition:'Ambient (room temp)', handling:'Careful', notes:'',           date:'2025-01-10' },
-      { id:'s2', origin:'Bulacan Fields',    destination:'Divisoria',      distance:35, travelTime:3,   userRole:'Distributor', productType:'Fruits',     productWeight:120, freshness:3, damageLevel:2, tempCondition:'Ambient (room temp)', handling:'Normal',  notes:'',           date:'2025-01-11' },
-      { id:'s3', origin:'Laguna Farm',       destination:'Pasay Market',   distance:58, travelTime:4,   userRole:'Distributor', productType:'Vegetables', productWeight:80,  freshness:2, damageLevel:3, tempCondition:'Hot / exposed to sun', handling:'Rough',   notes:'Heavy traffic', date:'2025-01-12' },
-    ];
-    saveData();
-  }
+function saveData() {
+  VertaSync.saveLocalCache(records);
 }
-function saveData() { localStorage.setItem(STORAGE_KEY, JSON.stringify(records)); }
+
+function applyRecordsFromCloud(data) {
+  records = data;
+  refreshActiveScreen();
+}
+
+function refreshActiveScreen() {
+  const active = document.querySelector('.screen.active');
+  if (!active) return;
+  if (active.id === 'screen-dash') renderDash();
+  if (active.id === 'screen-logs') renderLogs();
+  if (active.id === 'screen-analytics') renderAnalytics();
+}
+
+function applyTeamSyncCode() {
+  const code = document.getElementById('syncCodeInput').value.trim();
+  if (!code) { toast('Enter a team code'); return; }
+  toast('Connecting team…');
+  VertaSync.applySyncCode(code);
+}
+
+function renderDashSyncInput() {
+  const input = document.getElementById('syncCodeInput');
+  if (input) input.value = VertaSync.getSyncCode();
+}
 
 // ── State ────────────────────────────────────────────────────────────────────
 let freshRating = 0;
@@ -864,7 +895,7 @@ function updateStars(val) {
   document.querySelectorAll('#freshStars .star').forEach((s, i) => s.classList.toggle('filled', i < val));
 }
 
-function submitLog() {
+async function submitLog() {
   const tc = document.getElementById('tempCondition').value;
   const h  = document.getElementById('handling').value;
   if (!tc || !h) { toast('Please fill in transport conditions'); return; }
@@ -887,8 +918,13 @@ function submitLog() {
   };
 
   records.unshift(rec);
-  saveData();
-  toast('✓ Transport logged successfully!');
+  try {
+    await VertaSync.persistRecord(rec, records);
+    toast('✓ Transport logged — synced to team');
+  } catch (e) {
+    saveData();
+    toast('Saved on this phone; sync failed — check internet');
+  }
   setTimeout(() => showScreen('dash'), 700);
 }
 
@@ -902,6 +938,7 @@ function setFilter(mode, btn) {
 
 // ── Render: Dashboard ─────────────────────────────────────────────────────────
 function renderDash() {
+  renderDashSyncInput();
   document.getElementById('m-total').textContent = records.length;
   const todayCt = records.filter(r => r.date === todayStr()).length;
   document.getElementById('m-today').textContent = '+' + todayCt + ' today';
@@ -1007,10 +1044,15 @@ function showDetail(id) {
     <div class="detail-row"><span class="detail-key">Damage level</span>   <span class="detail-val">${dmgLabels[r.damageLevel]}</span></div>
     <div class="detail-row"><span class="detail-key">Quality score</span>  <span class="detail-val">${q} / 5.0</span></div>`;
 
-  document.getElementById('detailDeleteBtn').onclick = () => {
+  document.getElementById('detailDeleteBtn').onclick = async () => {
     records = records.filter(x => x.id !== id);
-    saveData();
-    toast('Record deleted');
+    try {
+      await VertaSync.removeRecord(id, records);
+      toast('Record deleted — synced to team');
+    } catch (e) {
+      saveData();
+      toast('Deleted on this phone; sync failed');
+    }
     goBack();
   };
 
@@ -1151,8 +1193,7 @@ updateClock();
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 initRouteAutoCalc();
-loadData();
-showScreen('dash');
+VertaSync.init(applyRecordsFromCloud, () => showScreen('dash'));
 </script>
 <script>
 if ('serviceWorker' in navigator) {
