@@ -105,10 +105,14 @@ gh repo create vertafield --public --source=. --remote=origin --push
 
 ### GitHub Pages (view in Chrome)
 
+**Live app URL:** https://bonaobrarowen.github.io/VertaField/
+
+The full app is in **`www/index.html`** (all HTML, CSS, and JavaScript in one file).
+
 1. Open [Settings → Pages](https://github.com/Bonaobrarowen/VertaField/settings/pages)
-2. Under **Build and deployment**, set **Source** to **GitHub Actions** (not “Deploy from branch”)
-3. After the next push to `main`, wait 1–2 minutes
-4. Open **https://bonaobrarowen.github.io/VertaField/**
+2. Set **Source** to **GitHub Actions** (recommended), **or** “Deploy from branch” → branch `main` → folder **`/www`**
+3. Do **not** use folder `/ (root)` — that shows the README instead of the app
+4. Wait 1–2 minutes after deploy, then open the live URL above
 
 ## Data storage
 
