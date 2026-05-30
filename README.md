@@ -103,11 +103,12 @@ gh auth login
 gh repo create vertafield --public --source=. --remote=origin --push
 ```
 
-### Optional: GitHub Pages (demo in browser)
+### GitHub Pages (view in Chrome)
 
-1. Repo → **Settings** → **Pages**
-2. Source: **Deploy from branch**, branch `main`, folder `/www`
-3. Your app will be at `https://YOUR_USERNAME.github.io/vertafield/`
+1. Open [Settings → Pages](https://github.com/Bonaobrarowen/VertaField/settings/pages)
+2. Under **Build and deployment**, set **Source** to **GitHub Actions** (not “Deploy from branch”)
+3. After the next push to `main`, wait 1–2 minutes
+4. Open **https://bonaobrarowen.github.io/VertaField/**
 
 ## Data storage
 

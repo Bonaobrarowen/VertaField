@@ -2,7 +2,7 @@
   "name": "VertaField",
   "short_name": "VertaField",
   "description": "Track agricultural transport quality from farm to market",
-  "start_url": "/index.html",
+  "start_url": "./index.html",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#111110",
